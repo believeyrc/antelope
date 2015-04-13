@@ -15,7 +15,7 @@ public interface ZookeeperClient {
 	
 	void delete(String path);
 	
-	String setData(String path, String data);
+	void setData(String path, String data);
 	
 	String getData(String path);
 	
