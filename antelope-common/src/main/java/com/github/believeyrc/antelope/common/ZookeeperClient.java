@@ -6,12 +6,17 @@ import java.util.List;
 import com.github.believeyrc.antelope.common.support.ChildrenListener;
 import com.github.believeyrc.antelope.common.support.NodeListener;
 
+/**
+ * zookeeper 操作接口
+ * @author yangrucheng
+ * @created 2015年4月15日 上午11:48:26
+ * @since 1.0
+ * @version 1.0
+ *
+ */
 public interface ZookeeperClient {
 	
-	String createPersistent(String path, String data);
-	
-	String createEphemeral(String path);
-	
+	void create(String path, boolean ephemeral, String data);
 	
 	void delete(String path);
 	
@@ -21,8 +26,7 @@ public interface ZookeeperClient {
 	
 	List<String> getChildren(String path);
 
-	String addListener(String path, NodeListener listener);
+	void addListener(String path, NodeListener listener);
 	
-	
-	List<String> addChildrenListener(String path, ChildrenListener childrenListener);
+	void addChildrenListener(String path, ChildrenListener childrenListener);
 }

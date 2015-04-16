@@ -10,25 +10,30 @@ import java.util.concurrent.ConcurrentMap;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
-import org.apache.curator.framework.api.CuratorWatcher;
 import org.apache.curator.framework.recipes.cache.NodeCache;
 import org.apache.curator.framework.recipes.cache.NodeCacheListener;
+import org.apache.curator.framework.recipes.cache.PathChildrenCache;
+import org.apache.curator.framework.recipes.cache.PathChildrenCacheEvent;
+import org.apache.curator.framework.recipes.cache.PathChildrenCacheListener;
 import org.apache.curator.framework.state.ConnectionState;
 import org.apache.curator.framework.state.ConnectionStateListener;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.data.Stat;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jmx.export.UnableToRegisterMBeanException;
 
+import com.github.believeyrc.antelope.common.support.ChildrenListener;
 import com.github.believeyrc.antelope.common.support.NodeListener;
-import com.github.believeyrc.antelope.common.support.ZookeeperListener;
 
-public class CuratorZookeeperClient extends AbstractZookeeperClient<ZookeeperListener> {
+public class CuratorZookeeperClient extends AbstractZookeeperClient {
 	
 	private CuratorFramework client;
 	
 	private ConcurrentMap<String, Set<NodeCache>> nodeCacheMap = new ConcurrentHashMap<String, Set<NodeCache>>();
+	
+	private Logger logger = LoggerFactory.getLogger(CuratorZookeeperClient.class);
 	
 	@Override
 	public void delete(String path) {
@@ -40,22 +45,24 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<ZookeeperLis
 	}
 
 	@Override
-	public String setData(String path, String data) {
-		Stat stat = null;
+	public void setData(String path, String data) {
 		try {
-			stat = client.setData().forPath(path, data.getBytes("utf-8"));
+			client.setData().forPath(path, data.getBytes(getChartset()));
 		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		return null;
 	}
 
 	@Override
 	public String getData(String path) {
 		try {
-			return new String(client.getData().forPath(path), "utf-8");
+			if (client.checkExists().forPath(path) != null) {
+				return new String(client.getData().forPath(path), getChartset());
+			} else {
+				return null;
+			}
 		} catch (UnsupportedEncodingException e) {
 			throw new UnableToRegisterMBeanException(e.getMessage(), e);
 		} catch (Exception e) {
@@ -65,60 +72,30 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<ZookeeperLis
 
 	@Override
 	public List<String> getChildren(String path) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	class CuratorDataWatcher implements CuratorWatcher {
-		private volatile NodeListener listener;
-		
-		public CuratorDataWatcher(NodeListener listener) {
-			this.listener = listener;
-		}
-
-		@Override
-		public void process(WatchedEvent event) throws Exception {
-			listener.nodeChanged(event.getPath(),"");
-			//String r = addDataListenerTarget(event.getPath(), getDataListenerTarget(event.getPath(), listener));
-			//System.out.println("r = " + r);
-			//addListener(event.getPath(), listener);
-			
-			
-		}
-		
-	}
-
-	class CuratorDataListener implements NodeCacheListener {
-
-		private volatile NodeListener dataListener;
-		
-		public CuratorDataListener(NodeListener dataListener) {
-			this.dataListener = dataListener;
-		}
-		
-		@Override
-		public void nodeChanged() throws Exception {
-			dataListener.nodeChanged("", "");
-		}
-		
-	}
-	
-	
-
-	@Override
-	public String createPersistent(String path, String data) {
 		try {
-			return client.create().withMode(CreateMode.PERSISTENT).forPath(path, data.getBytes("utf-8"));
+			return client.getChildren().forPath(path);
 		} catch (Exception e) {
 			throw new IllegalStateException(e.getMessage(), e);
 		}
 	}
 
 	@Override
-	public String createEphemeral(String path) {
+	public void createPersistent(String path, String data) {
+		try {
+			client.create().creatingParentsIfNeeded()
+					.withMode(CreateMode.PERSISTENT).forPath(path, data.getBytes(getChartset()));
+					
+		} catch (Exception e) {
+			throw new IllegalStateException(e.getMessage(), e);
+		}
+	}
+
+	@Override
+	public void createEphemeral(String path, String data) {
 		
 		try {
-			return client.create().withMode(CreateMode.EPHEMERAL).forPath(path);
+			client.create().creatingParentsIfNeeded()
+					.withMode(CreateMode.EPHEMERAL).forPath(path, data.getBytes(getChartset()));
 		} catch (Exception e) {
 			throw new IllegalStateException(e.getMessage(), e);
 		}
@@ -136,8 +113,8 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<ZookeeperLis
 	protected void doInit() {
 		System.out.println("do init ...");
 		try {
-			RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
-			client = CuratorFrameworkFactory.builder().namespace("yrc").retryPolicy(retryPolicy)
+			RetryPolicy retryPolicy = new ExponentialBackoffRetry(getBaseSleepTime(), getMaxRetries());
+			client = CuratorFrameworkFactory.builder().namespace(getNamespace()).retryPolicy(retryPolicy)
 					.connectString(getConnectString())
 					.build();
 			
@@ -162,24 +139,17 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<ZookeeperLis
 		} catch (Exception e) {
 			throw new IllegalStateException(e.getMessage(), e);
 		}
-		
 	}
 
 	@Override
 	public void publishConfig(String path, String data) {
 		try {
-			String configPrefix = getConfigPrefix();
-			String p = configPrefix + "/" + path;
-			//client.create().creatingParentsIfNeeded().forPath(p);
-			Stat stat = client.checkExists().forPath(configPrefix);
+			String pubPath = getConfigPrefix() + "/" + path;
+			Stat stat = client.checkExists().forPath(pubPath);
 			if (stat == null) {
-				createPersistent(configPrefix, "ee");
-			}
-			Stat stat2 = client.checkExists().forPath(p);
-			if (stat2 == null) {
-				createPersistent(p, data);
+				createPersistent(pubPath, data);
 			} else {
-				setData(p, data);
+				setData(pubPath, data);
 			}
 			
 		} catch (Exception e) {
@@ -191,17 +161,22 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<ZookeeperLis
 
 	@Override
 	public void subscribeConfig(String path) {
-		String realPath = getConfigPrefix() + "/" + path;
-		addListener(realPath, new NodeListener() {
+		String subPath = getConfigPrefix() + "/" + path;
+		addListener(subPath, new NodeListener() {
 			@Override
 			public void nodeChanged(String path, String data) {
-				configData.put(path, data);
+				if (data == null || "".equals(data)) {
+					configData.remove(path);
+				} else {
+					configData.put(path, data);
+				}
+				
 			}
 		});
 		try {
-			Stat stat = client.checkExists().forPath(realPath);
+			Stat stat = client.checkExists().forPath(subPath);
 			if (stat != null) {
-				configData.put(realPath, getData(realPath));
+				configData.put(subPath, getData(subPath));
 			}
 			
 		} catch (Exception e) {
@@ -212,50 +187,98 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<ZookeeperLis
 
 	@Override
 	public String getConfigData(String path) {
-		String realPath = getConfigPrefix() + "/" + path;
-		return configData.get(realPath);
+		String subPath = getConfigPrefix() + "/" + path;
+		return configData.get(subPath);
 	}
 
 	@Override
-	public String addListener(final String path, NodeListener listener) {
+	public void addListener(final String path, NodeListener listener) {
 	 	final NodeCache nodeCache = new NodeCache(client, path);
 	 	try {
 			nodeCache.start(true);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-	 	nodeCache.getListenable().addListener(new NodeCacheListenerImpl(listener, nodeCache));
-	 	
-	 	
-		return null;
+	 	nodeCache.getListenable().addListener(new NodeCacheListenerImpl(listener, nodeCache, path));
 	}
 
-	class NodeCacheListenerImpl implements NodeCacheListener {
 	
-		private NodeListener nodeListener;
-		
-		private NodeCache nodeCache;
-		
-		public NodeCacheListenerImpl(NodeListener nodeListener, NodeCache nodeCache) {
-			this.nodeListener = nodeListener;
-			this.nodeCache = nodeCache;
-		}
-
-		@Override
-		public void nodeChanged() throws Exception {
-			String path = nodeCache.getCurrentData().getPath();
-			String data = new String(nodeCache.getCurrentData().getData());
-			nodeListener.nodeChanged(path, data);
-			
-		}
-		
-	}
 
 
 
 	@Override
 	public void deleteConfig(String path) {
-		delete(getConfigPrefix() + "/" + path);
+		String deletePath = getConfigPrefix() + "/" + path;
+		try {
+			if (client.checkExists().forPath(deletePath) != null) {
+				delete(deletePath);
+			}
+		} catch (Exception e) {
+			throw new IllegalStateException(e.getMessage(), e);
+		}
+		
+	}
+		
+	@Override
+	protected void initConfig() {
+		List<String> path = getPath();
+		if (path != null && path.size() > 0) {
+			for (String pt : path) {
+				subscribeConfig(pt);
+			}
+		}
+		
 	}
 
+
+	class NodeCacheListenerImpl implements NodeCacheListener {
+		
+		private NodeListener nodeListener;
+		
+		private NodeCache nodeCache;
+		
+		private String path;
+		
+		public NodeCacheListenerImpl(NodeListener nodeListener, NodeCache nodeCache, String path) {
+			this.nodeListener = nodeListener;
+			this.nodeCache = nodeCache;
+			this.path = path;
+		}
+
+		@Override
+		public void nodeChanged() throws Exception {
+			String data = null;
+			if (nodeCache.getCurrentData() != null) {
+				data = new String(nodeCache.getCurrentData().getData());
+			}
+			logger.info("node changed : path {} data  {}", path, data);
+			nodeListener.nodeChanged(path, data);
+			
+		}
+		
+	}
+	
+	class PathChildrenCacheListenerImpl implements PathChildrenCacheListener {
+		private ChildrenListener childrenListener;
+		
+		private PathChildrenCache pathChildrenCache;
+		
+		public PathChildrenCacheListenerImpl(PathChildrenCache pathChildrenCache, 
+				ChildrenListener childrenListener) {
+			this.pathChildrenCache = pathChildrenCache;
+			this.childrenListener = childrenListener;
+			
+		}
+		
+		@Override
+		public void childEvent(CuratorFramework client,
+				PathChildrenCacheEvent event) throws Exception {
+
+			//event.getData().getPath();
+		//	event.getData().get
+			//childrenListener.childrenChanged("", pathChildrenCache.getCurrentData());
+		}
+		
+	}
+	
 }

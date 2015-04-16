@@ -66,17 +66,35 @@ public class ZookeeperTest {
 	}
 	
 	@Test
-	public void configTest() {
+	public void configTest() throws InterruptedException {
 		String path = "name2";
 		//configService.delete(path);
 		
 		configService.publishConfig(path, "sfbest");
 		//configService.deleteConfig(path);
-		configService.subscribeConfig(path);
+	//	configService.subscribeConfig(path);
 		System.out.println(configService.getConfigData(path));
-
+		//configService.subscribeConfig(path);
 		configService.publishConfig(path, "king");
+		Thread.sleep(10);
 		System.out.println(configService.getConfigData(path));
+		
+		configService.publishConfig(path, "fasf");
+		Thread.sleep(10);
+		System.out.println(configService.getConfigData(path));
+		
+		Thread.sleep(50000);
+	}
+	@Test
+	public void confTest() throws InterruptedException {
+		String p = "order/name";
+		String p2 = "test/config";
+		System.out.println(configService.getConfigData(p));
+		System.out.println(configService.getConfigData(p2));
+		Thread.sleep(500);
+		configService.publishConfig(p, "name======");
+		configService.publishConfig(p2, "config-------");
+		Thread.sleep(50000);
 	}
 
 }

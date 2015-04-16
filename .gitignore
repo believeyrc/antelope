@@ -10,3 +10,12 @@
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
+
+.settings/
+.classpath
+.project
+antelope-common/.settings/
+antelope-common/.project
+antelope-demo/.settings/
+antelope-demo/.project
+target/
