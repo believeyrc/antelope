@@ -11,13 +11,13 @@ import org.springframework.beans.factory.InitializingBean;
 public abstract class ClientConfigurationSupport implements InitializingBean, DisposableBean {
 	
 	
-	private String namespace = "zk-servcer";
+	private String namespace;
 	
 	private String connectString;
 	
 	private String configPrefix = "/config";
 	
-	private String chartset = "utf-8";
+	private String charset = "utf-8";
 	
 	private int maxRetries = 2;
 	
@@ -52,12 +52,14 @@ public abstract class ClientConfigurationSupport implements InitializingBean, Di
 		this.configPrefix = configPrefix;
 	}
 
-	public String getChartset() {
-		return chartset;
+	
+
+	public String getCharset() {
+		return charset;
 	}
 
-	public void setChartset(String chartset) {
-		this.chartset = chartset;
+	public void setCharset(String charset) {
+		this.charset = charset;
 	}
 
 	public int getMaxRetries() {

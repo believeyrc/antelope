@@ -3,13 +3,11 @@ package com.github.believeyrc.antelope.common;
 
 import java.io.UnsupportedEncodingException;
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.framework.CuratorFrameworkFactory.Builder;
 import org.apache.curator.framework.recipes.cache.NodeCache;
 import org.apache.curator.framework.recipes.cache.NodeCacheListener;
 import org.apache.curator.framework.recipes.cache.PathChildrenCache;
@@ -31,7 +29,7 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient {
 	
 	private CuratorFramework client;
 	
-	private ConcurrentMap<String, Set<NodeCache>> nodeCacheMap = new ConcurrentHashMap<String, Set<NodeCache>>();
+	//private ConcurrentMap<String, Set<NodeCache>> nodeCacheMap = new ConcurrentHashMap<String, Set<NodeCache>>();
 	
 	private Logger logger = LoggerFactory.getLogger(CuratorZookeeperClient.class);
 	
@@ -47,7 +45,7 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient {
 	@Override
 	public void setData(String path, String data) {
 		try {
-			client.setData().forPath(path, data.getBytes(getChartset()));
+			client.setData().forPath(path, data.getBytes(getCharset()));
 		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
 		} catch (Exception e) {
@@ -59,7 +57,7 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient {
 	public String getData(String path) {
 		try {
 			if (client.checkExists().forPath(path) != null) {
-				return new String(client.getData().forPath(path), getChartset());
+				return new String(client.getData().forPath(path), getCharset());
 			} else {
 				return null;
 			}
@@ -83,7 +81,7 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient {
 	public void createPersistent(String path, String data) {
 		try {
 			client.create().creatingParentsIfNeeded()
-					.withMode(CreateMode.PERSISTENT).forPath(path, data.getBytes(getChartset()));
+					.withMode(CreateMode.PERSISTENT).forPath(path, data.getBytes(getCharset()));
 					
 		} catch (Exception e) {
 			throw new IllegalStateException(e.getMessage(), e);
@@ -95,7 +93,7 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient {
 		
 		try {
 			client.create().creatingParentsIfNeeded()
-					.withMode(CreateMode.EPHEMERAL).forPath(path, data.getBytes(getChartset()));
+					.withMode(CreateMode.EPHEMERAL).forPath(path, data.getBytes(getCharset()));
 		} catch (Exception e) {
 			throw new IllegalStateException(e.getMessage(), e);
 		}
@@ -114,9 +112,12 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient {
 		System.out.println("do init ...");
 		try {
 			RetryPolicy retryPolicy = new ExponentialBackoffRetry(getBaseSleepTime(), getMaxRetries());
-			client = CuratorFrameworkFactory.builder().namespace(getNamespace()).retryPolicy(retryPolicy)
-					.connectString(getConnectString())
-					.build();
+			Builder builder = CuratorFrameworkFactory.builder().retryPolicy(retryPolicy)
+					.connectString(getConnectString());
+			if (getNamespace() != null && !"".equals(getNamespace())) {
+				builder.namespace(getNamespace());
+			}
+			client = builder.build();
 			
 			client.getConnectionStateListenable().addListener(new ConnectionStateListener() {
 				@Override
