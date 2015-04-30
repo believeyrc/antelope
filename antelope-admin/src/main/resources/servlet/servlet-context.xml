@@ -25,49 +25,38 @@
 	
 	<context:component-scan base-package="com.github.believeyrc.antelope.admin" />
 
-	<!-- 静态资源映射目录 -->
 	<mvc:resources mapping="/js/**" location="/js/" />
 	<mvc:resources mapping="/css/**" location="/css/" />
 	<mvc:resources mapping="/static/**" location="/static/" />
 
-	<!-- 加载Velocity属性文件和资源路径. -->
 	<bean id="velocityConfig"
 		class="org.springframework.web.servlet.view.velocity.VelocityConfigurer">
 		<property name="resourceLoaderPath" value="/WEB-INF/views/" />
 		<property name="configLocation" value="classpath:velocity/velocity.properties" />
 	</bean>
 
-	<!-- Velocity视图解析器 -->
 	<bean id="viewResolver"
 		class="org.springframework.web.servlet.view.velocity.VelocityLayoutViewResolver">
 		<property name="prefix" value="" />
 		<property name="suffix" value=".html" />
-		<!-- Whether we should cache views, once resolved -->
-		<property name="cache" value="false" /><!--是否缓存模板 -->
+		<property name="cache" value="false" />
 
 		<property name="contentType" value="text/html;charset=UTF-8" />
 
 		<property name="viewClass"
 			value="org.springframework.web.servlet.view.velocity.VelocityLayoutView" />
-		<!-- 默认Layout -->
 		<property name="layoutUrl" value="/layout/layout.html" />
 		<property name="layoutKey" value="layout" />
 
-		<!-- 视图动态布局引用Key值 -->
 		<property name="screenContentKey" value="screen_content" />
-		<!-- 暴露Spring本身的宏 -->
 		<property name="exposeSpringMacroHelpers" value="true" />
 		<property name="exposeSessionAttributes" value="true" />
-		<property name="exposeRequestAttributes" value="true" /><!--是否开放request属性 -->
-		<property name="requestContextAttribute" value="rc" /><!--request属性引用名称 -->
-
-		<!-- 格式化日期 :$dateTool.format("yyyy-MM-dd",$!{}) -->
+		<property name="exposeRequestAttributes" value="true" />
+		<property name="requestContextAttribute" value="rc" />
 		<property name="dateToolAttribute" value="dateTool" />
-		<!-- 格式化数字 : -->
 		<property name="numberToolAttribute" value="numberTool" />
 		<property name="attributesMap">
 			<map>
-				<!--Velocity Escape Tool -->
 				<entry key="math">
 					<bean class="org.apache.velocity.tools.generic.MathTool" />
 				</entry>
