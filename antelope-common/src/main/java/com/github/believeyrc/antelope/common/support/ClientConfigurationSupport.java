@@ -2,8 +2,6 @@ package com.github.believeyrc.antelope.common.support;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
@@ -25,8 +23,7 @@ public abstract class ClientConfigurationSupport implements InitializingBean, Di
 	
 	private List<String> path = new ArrayList<String>();
 	
-	protected ConcurrentMap<String, String> configData = new ConcurrentHashMap<String, String>();
-	
+	private String client = "curator";
 
 	public String getNamespace() {
 		return namespace;
@@ -52,8 +49,6 @@ public abstract class ClientConfigurationSupport implements InitializingBean, Di
 		this.configPrefix = configPrefix;
 	}
 
-	
-
 	public String getCharset() {
 		return charset;
 	}
@@ -78,15 +73,20 @@ public abstract class ClientConfigurationSupport implements InitializingBean, Di
 		this.baseSleepTime = baseSleepTime;
 	}
 	
-	
-	
-
 	public List<String> getPath() {
 		return path;
 	}
 
 	public void setPath(List<String> path) {
 		this.path = path;
+	}
+	
+	public String getClient() {
+		return client;
+	}
+
+	public void setClient(String client) {
+		this.client = client;
 	}
 
 	@Override
@@ -96,16 +96,16 @@ public abstract class ClientConfigurationSupport implements InitializingBean, Di
 
 	@Override
 	public void afterPropertiesSet() throws Exception {
-		doInit();
-		initConfig();
+		initializeClient(client, namespace, connectString, configPrefix, 
+				charset, maxRetries, baseSleepTime);
+		initializeConfig(path);
 	}
-	
-	protected abstract void doInit();
-	
-	protected abstract void initConfig();
 	
 	protected abstract void doClose();
 	
+	protected abstract void initializeClient(String client, String namespace, 
+			String connectString, String configPrefix, String charset, 
+			int maxRetries, int baseSleepTime);
 	
-
+	protected abstract void initializeConfig(List<String> pathList);
 }

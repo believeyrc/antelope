@@ -1,18 +1,15 @@
 package com.github.believeyrc.antelope.common;
 
-
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import com.github.believeyrc.antelope.common.support.ChildrenListener;
-import com.github.believeyrc.antelope.common.support.ClientConfigurationSupport;
 import com.github.believeyrc.antelope.common.support.NodeListener;
 
-public abstract class AbstractZookeeperClient extends ClientConfigurationSupport 
-						implements ClientSupport {
+public abstract class AbstractClient implements ClientSupport {
 	
 	protected ConcurrentMap<String, String> configData = new ConcurrentHashMap<String, String>();
+	
 	
 	@Override
 	public void create(String path, boolean ephemeral, String data) {
@@ -22,6 +19,7 @@ public abstract class AbstractZookeeperClient extends ClientConfigurationSupport
 			createPersistent(path, data);
 		}
 	}
+	
 	
 	@Override
 	public void delete(String path) {
@@ -36,22 +34,11 @@ public abstract class AbstractZookeeperClient extends ClientConfigurationSupport
 		if (checkExists(path)) {
 			setPathData(path, data);
 		} else {
-			
+
 		}
 		
 	}
-
 	
-	@Override
-	protected void initializeConfig(List<String> pathList) {
-		if (pathList != null && pathList.size() > 0) {
-			for (String pt : pathList) {
-				subscribeConfig(pt);
-			}
-		}
-		
-	}
-
 	@Override
 	public void publishConfig(String path, String data) {
 		String pubPath = getConfigPath(path);
@@ -93,6 +80,10 @@ public abstract class AbstractZookeeperClient extends ClientConfigurationSupport
 		delete(subPath);
 	}
 
+
+
+
+
 	protected abstract boolean checkExists(String path);
 	
 	protected abstract void createPersistent(String path, String data);
@@ -103,15 +94,14 @@ public abstract class AbstractZookeeperClient extends ClientConfigurationSupport
 	
 	protected abstract void setPathData(String path, String data);
 	
+	protected abstract String getConfigPath(String path);
+	
 	@Override
 	public void addChildrenListener(String path, ChildrenListener childrenListener) {
 
 	}
-	
+	/*
 	private String getConfigPath(String path) {
-		return getConfigPrefix() + "/" + path;
-	}
-	
-
+		return configPrefix + "/" + path;
+	}*/
 }
-

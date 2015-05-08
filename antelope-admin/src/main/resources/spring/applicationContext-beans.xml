@@ -14,7 +14,19 @@
 	
 	<context:component-scan base-package="com.github.believeyrc.antelope" />
 	
-	<bean id="curatorClient" class="com.github.believeyrc.antelope.common.CuratorZookeeperClient">
+	<!-- <bean id="curatorClient" class="com.github.believeyrc.antelope.common.CuratorZookeeperClient">
+		<property name="connectString" value="10.103.14.2:5181"></property>
+		<property name="configPrefix" value="/configPrefix" />
+		<property name="path" >
+			<list>
+				<value>order/name</value>
+				<value>order/exists</value>
+				<value>test/config</value>
+			</list>
+		</property>
+	</bean> -->
+	
+	<bean id="curatorClient" class="com.github.believeyrc.antelope.common.ZookeeperClientFactoryBean">
 		<property name="connectString" value="10.103.14.2:5181"></property>
 		<property name="configPrefix" value="/configPrefix" />
 		<property name="path" >
@@ -25,4 +37,5 @@
 			</list>
 		</property>
 	</bean>
+	
 </beans>

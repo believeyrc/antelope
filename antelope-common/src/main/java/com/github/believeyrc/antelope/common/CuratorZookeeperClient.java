@@ -1,6 +1,7 @@
 package com.github.believeyrc.antelope.common;
 
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.List;
 
@@ -17,7 +18,6 @@ import org.apache.curator.framework.state.ConnectionState;
 import org.apache.curator.framework.state.ConnectionStateListener;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jmx.export.UnableToRegisterMBeanException;
@@ -29,12 +29,24 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient {
 	
 	private CuratorFramework client;
 	
-	//private ConcurrentMap<String, Set<NodeCache>> nodeCacheMap = new ConcurrentHashMap<String, Set<NodeCache>>();
-	
 	private Logger logger = LoggerFactory.getLogger(CuratorZookeeperClient.class);
 	
+	
 	@Override
-	public void delete(String path) {
+	protected boolean checkExists(String path) {
+		boolean exist = false;
+		try {
+			if (client.checkExists().forPath(path) != null) {
+				exist = true;
+			}
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+		}
+		return exist;
+	}
+
+	@Override
+	public void deletePath(String path) {
 		try {
 			client.delete().forPath(path);
 		} catch (Exception e) {
@@ -43,7 +55,7 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient {
 	}
 
 	@Override
-	public void setData(String path, String data) {
+	public void setPathData(String path, String data) {
 		try {
 			client.setData().forPath(path, data.getBytes(getCharset()));
 		} catch (UnsupportedEncodingException e) {
@@ -101,96 +113,11 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient {
 
 	@Override
 	protected void doClose() {
-		System.out.println("do close.....");
 		client.close();
 	}
 
 	
 	
-	@Override
-	protected void doInit() {
-		System.out.println("do init ...");
-		try {
-			RetryPolicy retryPolicy = new ExponentialBackoffRetry(getBaseSleepTime(), getMaxRetries());
-			Builder builder = CuratorFrameworkFactory.builder().retryPolicy(retryPolicy)
-					.connectString(getConnectString());
-			if (getNamespace() != null && !"".equals(getNamespace())) {
-				builder.namespace(getNamespace());
-			}
-			client = builder.build();
-			
-			client.getConnectionStateListenable().addListener(new ConnectionStateListener() {
-				@Override
-				public void stateChanged(CuratorFramework client, ConnectionState newState) {
-					System.out.println("curator " + newState);
-					if (newState == ConnectionState.CONNECTED) {
-						
-					} else if (newState == ConnectionState.RECONNECTED) {
-						
-					} else if (newState == ConnectionState.LOST) {
-						
-					} else if (newState == ConnectionState.SUSPENDED) {
-						
-					}
-					
-				}
-			});
-			
-			client.start();
-		} catch (Exception e) {
-			throw new IllegalStateException(e.getMessage(), e);
-		}
-	}
-
-	@Override
-	public void publishConfig(String path, String data) {
-		try {
-			String pubPath = getConfigPrefix() + "/" + path;
-			Stat stat = client.checkExists().forPath(pubPath);
-			if (stat == null) {
-				createPersistent(pubPath, data);
-			} else {
-				setData(pubPath, data);
-			}
-			
-		} catch (Exception e) {
-			throw new IllegalStateException(e.getMessage(), e);
-		}
-		
-		
-	}
-
-	@Override
-	public void subscribeConfig(String path) {
-		String subPath = getConfigPrefix() + "/" + path;
-		addListener(subPath, new NodeListener() {
-			@Override
-			public void nodeChanged(String path, String data) {
-				if (data == null || "".equals(data)) {
-					configData.remove(path);
-				} else {
-					configData.put(path, data);
-				}
-				
-			}
-		});
-		try {
-			Stat stat = client.checkExists().forPath(subPath);
-			if (stat != null) {
-				configData.put(subPath, getData(subPath));
-			}
-			
-		} catch (Exception e) {
-			throw new IllegalStateException(e.getMessage(), e);
-		}
-		
-	}
-
-	@Override
-	public String getConfigData(String path) {
-		String subPath = getConfigPrefix() + "/" + path;
-		return configData.get(subPath);
-	}
 
 	@Override
 	public void addListener(final String path, NodeListener listener) {
@@ -198,37 +125,18 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient {
 	 	try {
 			nodeCache.start(true);
 		} catch (Exception e) {
-			e.printStackTrace();
+			try {
+				nodeCache.close();
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			throw new IllegalStateException(e.getMessage(), e);
+			
+		} finally {
+
 		}
 	 	nodeCache.getListenable().addListener(new NodeCacheListenerImpl(listener, nodeCache, path));
-	}
-
-	
-
-
-
-	@Override
-	public void deleteConfig(String path) {
-		String deletePath = getConfigPrefix() + "/" + path;
-		try {
-			if (client.checkExists().forPath(deletePath) != null) {
-				delete(deletePath);
-			}
-		} catch (Exception e) {
-			throw new IllegalStateException(e.getMessage(), e);
-		}
-		
-	}
-		
-	@Override
-	protected void initConfig() {
-		List<String> path = getPath();
-		if (path != null && path.size() > 0) {
-			for (String pt : path) {
-				subscribeConfig(pt);
-			}
-		}
-		
 	}
 
 
@@ -279,6 +187,48 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient {
 		//	event.getData().get
 			//childrenListener.childrenChanged("", pathChildrenCache.getCurrentData());
 		}
+		
+	}
+
+	@Override
+	protected void initializeClient(String clientType, String namespace, String connectString,
+			String configPrefix, String charset, int maxRetries,
+			int baseSleepTime) {
+		try {
+			RetryPolicy retryPolicy = new ExponentialBackoffRetry(baseSleepTime, maxRetries);
+			Builder builder = CuratorFrameworkFactory.builder().retryPolicy(retryPolicy)
+					.connectString(connectString);
+			if (namespace != null && !"".equals(namespace)) {
+				builder.namespace(namespace);
+			}
+			client = builder.build();
+			
+			client.getConnectionStateListenable().addListener(new ConnectionStateListener() {
+				@Override
+				public void stateChanged(CuratorFramework client, ConnectionState newState) {
+					System.out.println("curator " + newState);
+					if (newState == ConnectionState.CONNECTED) {
+						
+					} else if (newState == ConnectionState.RECONNECTED) {
+						
+					} else if (newState == ConnectionState.LOST) {
+						
+					} else if (newState == ConnectionState.SUSPENDED) {
+						
+					}
+					
+				}
+			});
+			client.start();
+		} catch (Exception e) {
+			throw new IllegalStateException(e.getMessage(), e);
+		}
+		
+		
+	}
+
+	@Override
+	public void close() {
 		
 	}
 	

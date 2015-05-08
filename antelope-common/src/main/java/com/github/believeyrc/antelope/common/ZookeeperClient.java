@@ -7,9 +7,8 @@ import com.github.believeyrc.antelope.common.support.ChildrenListener;
 import com.github.believeyrc.antelope.common.support.NodeListener;
 
 /**
- * zookeeper 操作接口
+ * zookeeper客户端基础操作接口
  * @author yangrucheng
- * @created 2015年4月15日 上午11:48:26
  * @since 1.0
  * @version 1.0
  *
@@ -29,4 +28,6 @@ public interface ZookeeperClient {
 	void addListener(String path, NodeListener listener);
 	
 	void addChildrenListener(String path, ChildrenListener childrenListener);
+	
+	
 }
