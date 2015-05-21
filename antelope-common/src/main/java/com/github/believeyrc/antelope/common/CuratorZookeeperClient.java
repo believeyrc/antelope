@@ -25,6 +25,7 @@ import org.springframework.jmx.export.UnableToRegisterMBeanException;
 import com.github.believeyrc.antelope.common.support.ChildrenListener;
 import com.github.believeyrc.antelope.common.support.NodeListener;
 
+@Deprecated
 public class CuratorZookeeperClient extends AbstractZookeeperClient {
 	
 	private CuratorFramework client;
@@ -231,5 +232,15 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient {
 	public void close() {
 		
 	}
+
+	@Override
+	public void init(String namespace, String connectString,
+			String configPrefix, String charset, int maxRetries,
+			int baseSleepTime) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	
 	
 }

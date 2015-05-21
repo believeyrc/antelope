@@ -20,15 +20,20 @@ import org.springframework.jmx.export.UnableToRegisterMBeanException;
 
 import com.github.believeyrc.antelope.common.support.NodeListener;
 
+
 public class CuratorClient extends AbstractClient{
 	
 	private Logger logger = LoggerFactory.getLogger(CuratorClient.class);
 	
-	private final CuratorFramework client;
+	private CuratorFramework client;
 	
-	private final String configPrefix;
+	private String configPrefix;
 	
-	private final String charset;
+	private String charset;
+	
+	public CuratorClient(){
+		
+	}
 	
 	public CuratorClient(String namespace, String connectString,
 			String configPrefix, String charset, int maxRetries, int baseSleepTime) {
@@ -221,7 +226,46 @@ class NodeCacheListenerImpl implements NodeCacheListener {
 
 	@Override
 	public void close() {
+		System.out.println("client close ...");
 		client.close();
+		
+	}
+
+	@Override
+	public void init(String namespace, String connectString,
+			String configPrefix, String charset, int maxRetries,
+			int baseSleepTime) {
+		// TODO Auto-generated method stub
+		this.configPrefix = configPrefix;
+		this.charset = charset;
+		try {
+			RetryPolicy retryPolicy = new ExponentialBackoffRetry(baseSleepTime, maxRetries);
+			Builder builder = CuratorFrameworkFactory.builder().retryPolicy(retryPolicy)
+					.connectString(connectString);
+			if (namespace != null && !"".equals(namespace)) {
+				builder.namespace(namespace);
+			}
+			client = builder.build();
+			client.getConnectionStateListenable().addListener(new ConnectionStateListener() {
+				@Override
+				public void stateChanged(CuratorFramework client, ConnectionState newState) {
+					System.out.println("curator " + newState);
+					if (newState == ConnectionState.CONNECTED) {
+						
+					} else if (newState == ConnectionState.RECONNECTED) {
+						
+					} else if (newState == ConnectionState.LOST) {
+						
+					} else if (newState == ConnectionState.SUSPENDED) {
+						
+					}
+					
+				}
+			});
+			client.start();
+		} catch (Exception e) {
+			throw new IllegalStateException(e.getMessage(), e);
+		}
 		
 	}
 

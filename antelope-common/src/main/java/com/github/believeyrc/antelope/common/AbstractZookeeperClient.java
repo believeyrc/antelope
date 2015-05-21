@@ -9,6 +9,7 @@ import com.github.believeyrc.antelope.common.support.ChildrenListener;
 import com.github.believeyrc.antelope.common.support.ClientConfigurationSupport;
 import com.github.believeyrc.antelope.common.support.NodeListener;
 
+@Deprecated
 public abstract class AbstractZookeeperClient extends ClientConfigurationSupport 
 						implements ClientSupport {
 	

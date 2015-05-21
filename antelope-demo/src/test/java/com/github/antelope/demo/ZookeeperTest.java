@@ -94,7 +94,7 @@ public class ZookeeperTest {
 		Thread.sleep(500);
 		configService.publishConfig(p, "name======");
 		configService.publishConfig(p2, "config-------");
-		Thread.sleep(50000);
+		//Thread.sleep(500);
 	}
 
 }
