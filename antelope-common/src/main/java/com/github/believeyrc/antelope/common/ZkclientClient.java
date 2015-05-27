@@ -2,9 +2,24 @@ package com.github.believeyrc.antelope.common;
 
 import java.util.List;
 
+import org.I0Itec.zkclient.IZkDataListener;
+import org.I0Itec.zkclient.ZkClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.github.believeyrc.antelope.common.support.NodeListener;
 
 public class ZkclientClient extends AbstractClient {
+	
+	private final Logger logger = LoggerFactory.getLogger(ZkclientClient.class);
+	
+	private ZkClient client;
+	
+	private String configPrefix;
+	
+	private String charset;
+	
+	private String namespace;
 	
 	public ZkclientClient() {
 		
@@ -12,76 +27,92 @@ public class ZkclientClient extends AbstractClient {
 
 	@Override
 	public void close() {
-		// TODO Auto-generated method stub
+		client.close();
 		
 	}
 
 	@Override
 	public String getData(String path) {
-		// TODO Auto-generated method stub
-		return null;
+		return client.readData(path);
 	}
 
 	@Override
 	public List<String> getChildren(String path) {
-		// TODO Auto-generated method stub
-		return null;
+		return client.getChildren(path);
 	}
 
 	@Override
-	public void addListener(String path, NodeListener listener) {
-		// TODO Auto-generated method stub
+	public void addListener(String path, final NodeListener listener) {
+		client.subscribeDataChanges(path, new IZkDataListener() {
+			
+			@Override
+			public void handleDataDeleted(String dataPath) throws Exception {
+				listener.nodeChanged(dataPath, null);
+			}
+			
+			@Override
+			public void handleDataChange(String dataPath, Object data) throws Exception {
+				listener.nodeChanged(dataPath, (String)data);
+			}
+		});
 		
 	}
 
 	@Override
 	public String getConfigPrefix() {
-		// TODO Auto-generated method stub
-		return null;
+		StringBuilder builder = new StringBuilder();
+		if (namespace != null && !"".equals(namespace)) {
+			builder.append("/");
+			builder.append(namespace);
+		}
+		builder.append(configPrefix);
+		return builder.toString();
 	}
 
 	@Override
 	protected boolean checkExists(String path) {
-		// TODO Auto-generated method stub
-		return false;
+		return client.exists(path);
 	}
 
 	@Override
 	protected void createPersistent(String path, String data) {
-		// TODO Auto-generated method stub
-		
+		client.createPersistent(path, data);
 	}
 
 	@Override
 	protected void createEphemeral(String path, String data) {
-		// TODO Auto-generated method stub
-		
+		client.createEphemeral(path, data);
 	}
 
 	@Override
 	protected void deletePath(String path) {
-		// TODO Auto-generated method stub
-		
+		client.delete(path);
 	}
 
 	@Override
 	protected void setPathData(String path, String data) {
-		// TODO Auto-generated method stub
-		
+		client.writeData(path, data);
 	}
 
 	@Override
 	protected String getConfigPath(String path) {
-		// TODO Auto-generated method stub
-		return null;
+		return getConfigPrefix() + "/" + path;
 	}
 
 	@Override
 	public void init(String namespace, String connectString,
 			String configPrefix, String charset, int maxRetries,
 			int baseSleepTime) {
-		// TODO Auto-generated method stub
-		System.out.println("zkclient started ....");
+		try {
+			int connectionTimeout = 60000;
+			this.charset = charset;
+			this.configPrefix = configPrefix;
+			this.namespace = namespace;
+			client = new ZkClient(connectString, connectionTimeout);
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+		}
+		
 		
 	}
 

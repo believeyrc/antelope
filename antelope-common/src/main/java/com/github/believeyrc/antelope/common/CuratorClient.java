@@ -23,7 +23,7 @@ import com.github.believeyrc.antelope.common.support.NodeListener;
 
 public class CuratorClient extends AbstractClient{
 	
-	private Logger logger = LoggerFactory.getLogger(CuratorClient.class);
+	private final Logger logger = LoggerFactory.getLogger(CuratorClient.class);
 	
 	private CuratorFramework client;
 	
