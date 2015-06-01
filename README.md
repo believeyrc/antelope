@@ -39,11 +39,11 @@
 
 使用客户端
 	
-	configClient.publishConfig("order/timeout", "60");	//发布配置
-	configClient.getConfigData("order/timeout");		//获取配置
-	configClient.subscribeConfig("order/timeout");		//订阅配置
-	configClient.deleteConfig("order/timeout");		//删除配置
-
+	configClient.publishConfig("order/timeout", "60");  //发布配置
+	configClient.getConfigData("order/timeout");        //获取配置
+	configClient.subscribeConfig("order/timeout");      //订阅配置
+	configClient.deleteConfig("order/timeout");         //删除配置
+	
 ### 配置控制台
 将antelope-admin.war部署至Tomcat
 
